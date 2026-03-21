@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,508 +8,398 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&display=swap');
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+- { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Caveat', cursive;
-    background: #f5f0e8;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
-    cursor: default;
-  }
+body {
+font-family: ‘Caveat’, cursive;
+background: #f5f0e8;
+overflow: hidden;
+height: 100vh;
+width: 100vw;
+cursor: default;
+user-select: none;
+}
 
-  /* Dot grid paper background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: radial-gradient(circle, #b0a898 1px, transparent 1px);
-    background-size: 24px 24px;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.5;
-  }
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image: radial-gradient(circle, #b0a898 1px, transparent 1px);
+background-size: 24px 24px;
+pointer-events: none;
+z-index: 0;
+opacity: 0.5;
+}
 
-  /* Slight paper texture */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.4;
-  }
+#svg-layer {
+position: fixed;
+inset: 0;
+z-index: 2;
+pointer-events: none;
+}
 
-  #canvas {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-  }
+#nodes-layer {
+position: fixed;
+inset: 0;
+z-index: 3;
+}
 
-  #svg-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-  }
+.word-node {
+position: absolute;
+font-family: ‘Caveat’, cursive;
+font-size: 20px;
+font-weight: 600;
+color: #1a1410;
+white-space: nowrap;
+cursor: grab;
+padding: 3px 8px;
+transform: translate(-50%, -50%);
+border-bottom: 2px solid #1a1410;
+letter-spacing: 0.03em;
+transition: color 0.15s, border-color 0.15s;
+}
+.word-node:active { cursor: grabbing; }
+.word-node.connecting-source { color: #8b3a0f; border-color: #8b3a0f; }
+.word-node.connecting-target { cursor: crosshair; }
+.word-node.connecting-target:hover { color: #8b3a0f; border-color: #8b3a0f; }
 
-  #nodes-layer {
-    position: fixed;
-    inset: 0;
-    z-index: 3;
-  }
+.web-line {
+stroke: #2a2018;
+stroke-width: 1.5;
+stroke-linecap: round;
+opacity: 0.6;
+}
+.preview-line {
+stroke: #8b3a0f;
+stroke-width: 1.5;
+stroke-linecap: round;
+stroke-dasharray: 6 4;
+opacity: 0.7;
+}
 
-  /* ---- Cluster ---- */
-  .cluster {
-    position: absolute;
-    user-select: none;
-  }
+#toolbar {
+position: fixed;
+top: 20px;
+left: 50%;
+transform: translateX(-50%);
+z-index: 100;
+display: flex;
+align-items: center;
+gap: 12px;
+background: rgba(245,240,232,0.94);
+border: 1.5px solid #c8bfad;
+border-radius: 12px;
+padding: 10px 18px;
+box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+backdrop-filter: blur(4px);
+}
+#toolbar h1 {
+font-family: ‘Caveat’, cursive;
+font-size: 22px;
+font-weight: 700;
+color: #1a1410;
+letter-spacing: 0.05em;
+margin-right: 4px;
+}
+.tb-btn {
+font-family: ‘Caveat’, cursive;
+font-size: 16px;
+background: #1a1410;
+color: #f5f0e8;
+border: none;
+border-radius: 8px;
+padding: 6px 16px;
+cursor: pointer;
+transition: background 0.15s, transform 0.1s;
+letter-spacing: 0.03em;
+white-space: nowrap;
+}
+.tb-btn:hover { background: #3a2e20; transform: translateY(-1px); }
+.tb-btn.danger { background: #8b3a0f; }
+.tb-btn.danger:hover { background: #a04010; }
+.tb-sep { width: 1px; height: 28px; background: #c8bfad; }
 
-  .cluster-root {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    font-family: 'Caveat', cursive;
-    font-size: 22px;
-    font-weight: 700;
-    color: #1a1410;
-    padding: 4px 10px;
-    border-bottom: 2.5px solid #1a1410;
-    cursor: grab;
-    white-space: nowrap;
-    letter-spacing: 0.03em;
-  }
-  .cluster-root:active { cursor: grabbing; }
-  .cluster-root.shared-highlight { color: #8b3a0f; border-color: #8b3a0f; }
+#ctx-menu {
+display: none;
+position: fixed;
+z-index: 400;
+background: #faf6ee;
+border: 1.5px solid #c8bfad;
+border-radius: 10px;
+padding: 6px 0;
+box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+min-width: 200px;
+}
+#ctx-menu button {
+display: block;
+width: 100%;
+background: none;
+border: none;
+font-family: ‘Caveat’, cursive;
+font-size: 17px;
+color: #2a2018;
+padding: 8px 18px;
+text-align: left;
+cursor: pointer;
+}
+#ctx-menu button:hover { background: #f0e8d8; }
+#ctx-menu button.danger { color: #8b3a0f; }
+#ctx-menu hr { border: none; border-top: 1px solid #e0d8c8; margin: 4px 0; }
 
-  .word-node {
-    position: absolute;
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    font-weight: 400;
-    color: #2a2018;
-    white-space: nowrap;
-    cursor: grab;
-    padding: 2px 6px;
-    letter-spacing: 0.02em;
-  }
-  .word-node:active { cursor: grabbing; }
-  .word-node.shared-highlight { color: #8b3a0f; font-weight: 600; }
+.modal-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(30,20,10,0.35);
+z-index: 500;
+align-items: center;
+justify-content: center;
+backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+background: #faf6ee;
+border: 1.5px solid #c8bfad;
+border-radius: 16px;
+padding: 28px 32px;
+width: 380px;
+max-width: 92vw;
+box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+position: relative;
+}
+.modal h2 { font-family: ‘Caveat’, cursive; font-size: 26px; font-weight: 700; color: #1a1410; margin-bottom: 8px; }
+.modal p { font-family: ‘Caveat’, cursive; font-size: 15px; color: #6b5c48; margin-bottom: 14px; line-height: 1.5; }
+.modal label { font-family: ‘Caveat’, cursive; font-size: 17px; color: #2a2018; display: block; margin-bottom: 4px; }
+.modal input {
+width: 100%;
+font-family: ‘Caveat’, cursive;
+font-size: 20px;
+background: #f5f0e8;
+border: 1.5px solid #c8bfad;
+border-radius: 8px;
+padding: 8px 12px;
+color: #1a1410;
+outline: none;
+margin-bottom: 16px;
+transition: border-color 0.15s;
+}
+.modal input:focus { border-color: #8b3a0f; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 22px; cursor: pointer; color: #9a8870; line-height: 1; }
 
-  /* SVG lines */
-  .cluster-line {
-    stroke: #2a2018;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    opacity: 0.7;
-  }
-  .shared-line {
-    stroke: #8b3a0f;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-dasharray: 5 4;
-    opacity: 0.85;
-    animation: dash-flow 1.5s linear infinite;
-  }
-  @keyframes dash-flow {
-    to { stroke-dashoffset: -18; }
-  }
-
-  /* ---- UI ---- */
-  #toolbar {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: rgba(245,240,232,0.92);
-    border: 1.5px solid #c8bfad;
-    border-radius: 12px;
-    padding: 10px 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-    backdrop-filter: blur(4px);
-  }
-
-  #toolbar h1 {
-    font-family: 'Caveat', cursive;
-    font-size: 22px;
-    font-weight: 700;
-    color: #1a1410;
-    letter-spacing: 0.05em;
-    margin-right: 8px;
-  }
-
-  .tb-btn {
-    font-family: 'Caveat', cursive;
-    font-size: 16px;
-    background: #1a1410;
-    color: #f5f0e8;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 16px;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-    letter-spacing: 0.03em;
-  }
-  .tb-btn:hover { background: #3a2e20; transform: translateY(-1px); }
-  .tb-btn.danger { background: #8b3a0f; }
-  .tb-btn.danger:hover { background: #a04010; }
-
-  .tb-sep {
-    width: 1px;
-    height: 28px;
-    background: #c8bfad;
-  }
-
-  /* ---- Modal ---- */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(30,20,10,0.35);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(2px);
-  }
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: #faf6ee;
-    border: 1.5px solid #c8bfad;
-    border-radius: 16px;
-    padding: 28px 32px;
-    width: 420px;
-    max-width: 92vw;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-    position: relative;
-  }
-
-  .modal h2 {
-    font-family: 'Caveat', cursive;
-    font-size: 26px;
-    font-weight: 700;
-    color: #1a1410;
-    margin-bottom: 6px;
-  }
-
-  .modal p {
-    font-family: 'Caveat', cursive;
-    font-size: 16px;
-    color: #6b5c48;
-    margin-bottom: 18px;
-    line-height: 1.5;
-  }
-
-  .modal label {
-    font-family: 'Caveat', cursive;
-    font-size: 17px;
-    color: #2a2018;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .modal input, .modal textarea {
-    width: 100%;
-    font-family: 'Caveat', cursive;
-    font-size: 18px;
-    background: #f5f0e8;
-    border: 1.5px solid #c8bfad;
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: #1a1410;
-    outline: none;
-    resize: vertical;
-    transition: border-color 0.15s;
-    margin-bottom: 16px;
-  }
-  .modal input:focus, .modal textarea:focus { border-color: #8b3a0f; }
-
-  .modal-hint {
-    font-size: 14px !important;
-    color: #9a8870 !important;
-    margin-top: -12px !important;
-    margin-bottom: 16px !important;
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 14px; right: 16px;
-    background: none;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    color: #9a8870;
-    line-height: 1;
-  }
-
-  /* ---- Context menu ---- */
-  #ctx-menu {
-    display: none;
-    position: fixed;
-    z-index: 300;
-    background: #faf6ee;
-    border: 1.5px solid #c8bfad;
-    border-radius: 10px;
-    padding: 6px 0;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
-    min-width: 160px;
-  }
-  #ctx-menu button {
-    display: block;
-    width: 100%;
-    background: none;
-    border: none;
-    font-family: 'Caveat', cursive;
-    font-size: 17px;
-    color: #2a2018;
-    padding: 7px 18px;
-    text-align: left;
-    cursor: pointer;
-  }
-  #ctx-menu button:hover { background: #f0e8d8; }
-  #ctx-menu button.danger { color: #8b3a0f; }
-  #ctx-menu hr { border: none; border-top: 1px solid #e0d8c8; margin: 4px 0; }
-
-  /* ---- Hint ---- */
-  #hint {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Caveat', cursive;
-    font-size: 15px;
-    color: #9a8870;
-    z-index: 10;
-    letter-spacing: 0.02em;
-    pointer-events: none;
-  }
+#autosave-indicator {
+position: fixed; bottom: 20px; right: 20px; z-index: 50;
+font-family: ‘Caveat’, cursive; font-size: 15px; color: #9a8870;
+opacity: 0; transition: opacity 0.4s; pointer-events: none;
+}
+#hint {
+position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+font-family: ‘Caveat’, cursive; font-size: 15px; color: #9a8870;
+z-index: 10; pointer-events: none; white-space: nowrap;
+}
+#connect-banner {
+display: none;
+position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+z-index: 100;
+background: #8b3a0f; color: #faf6ee;
+font-family: ‘Caveat’, cursive; font-size: 17px;
+padding: 8px 20px; border-radius: 20px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+pointer-events: none;
+}
 </style>
+
 </head>
 <body>
 
-<canvas id="canvas"></canvas>
 <svg id="svg-layer"></svg>
+
 <div id="nodes-layer"></div>
 
 <div id="toolbar">
   <h1>word web</h1>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-new-cluster">+ new cluster</button>
+  <button class="tb-btn" id="btn-add">+ add word</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="btn-save">↓ save file</button>
-  <button class="tb-btn" id="btn-load" title="Load a saved .wordweb file">↑ load file</button>
-  <input type="file" id="file-input" accept=".wordweb,.json" style="display:none" />
+  <button class="tb-btn" id="btn-save">↓ save</button>
+  <button class="tb-btn" id="btn-load">↑ load</button>
+  <input type="file" id="file-input" accept=".wordweb,.json" style="display:none">
   <div class="tb-sep"></div>
   <button class="tb-btn danger" id="btn-clear">clear all</button>
 </div>
 
-<!-- Save indicator -->
-<div id="autosave-indicator" style="
-  position:fixed; bottom:20px; right:20px; z-index:50;
-  font-family:'Caveat',cursive; font-size:15px; color:#9a8870;
-  opacity:0; transition:opacity 0.4s;
-  pointer-events:none;
-">✦ saved</div>
+<div id="connect-banner"></div>
+<div id="autosave-indicator">✦ saved</div>
+<div id="hint">right-click any word for options · drag to move</div>
 
-<div id="hint">right-click any word to edit or delete &nbsp;·&nbsp; drag to rearrange</div>
-
-<!-- New Cluster Modal -->
-<div class="modal-overlay" id="modal-cluster">
+<div class="modal-overlay" id="modal-word">
   <div class="modal">
-    <button class="modal-close" id="close-cluster">×</button>
-    <h2>New Cluster</h2>
-    <p>Give your cluster a root word, then add the words you associate with it.</p>
-    <label>Root word</label>
-    <input type="text" id="input-root" placeholder="e.g. COFFEE" />
-    <label>Associated words</label>
-    <textarea id="input-words" rows="4" placeholder="one word or phrase per line&#10;e.g.&#10;morning&#10;warm&#10;chocolate&#10;mug"></textarea>
-    <p class="modal-hint">Shared words across clusters will auto-connect ✦</p>
+    <button class="modal-close" id="modal-close">×</button>
+    <h2 id="modal-title">Add a word</h2>
+    <p id="modal-desc"></p>
+    <label>Word or phrase</label>
+    <input type="text" id="modal-input" placeholder="e.g. flower" autocomplete="off" />
     <div class="modal-actions">
-      <button class="tb-btn" style="background:#9a8870" id="cancel-cluster">cancel</button>
-      <button class="tb-btn" id="confirm-cluster">create</button>
+      <button class="tb-btn" style="background:#9a8870" id="modal-cancel">cancel</button>
+      <button class="tb-btn" id="modal-confirm">add</button>
     </div>
   </div>
 </div>
 
-<!-- Edit word modal -->
-<div class="modal-overlay" id="modal-edit">
-  <div class="modal">
-    <button class="modal-close" id="close-edit">×</button>
-    <h2>Edit Word</h2>
-    <label>Word</label>
-    <input type="text" id="input-edit-word" />
-    <div class="modal-actions">
-      <button class="tb-btn" style="background:#9a8870" id="cancel-edit">cancel</button>
-      <button class="tb-btn" id="confirm-edit">save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Context menu -->
 <div id="ctx-menu">
-  <button id="ctx-add-word">+ add word here</button>
-  <button id="ctx-edit">edit word</button>
+  <button id="ctx-add-connected">+ add connected word</button>
+  <button id="ctx-connect">connect to existing word…</button>
+  <button id="ctx-edit">rename</button>
   <hr>
+  <button id="ctx-disconnect" class="danger">remove a connection…</button>
   <button id="ctx-delete" class="danger">delete word</button>
-  <button id="ctx-delete-cluster" class="danger">delete cluster</button>
 </div>
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
-let clusters = []; // { id, root:{text,x,y}, words:[{id,text,x,y}] }
+// ── State ──────────────────────────────────────────────────
+let words = [];  // { id, text, x, y }
+let edges = [];  // { id, a, b }
 let nextId = 1;
+const STORAGE_KEY = 'wordweb_v2';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+function uid() { return nextId++; }
+function norm(s) { return s.trim().toLowerCase(); }
+
+// ── Storage ────────────────────────────────────────────────
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ words, edges, nextId }));
+    const ind = document.getElementById('autosave-indicator');
+    ind.style.opacity = '1';
+    clearTimeout(ind._t);
+    ind._t = setTimeout(() => ind.style.opacity = '0', 1600);
+  } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    words = d.words || []; edges = d.edges || []; nextId = d.nextId || nextId;
+    return words.length > 0;
+  } catch(e) { return false; }
+}
+
+document.getElementById('btn-save').onclick = () => {
+  const blob = new Blob([JSON.stringify({ words, edges, nextId }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-word-web.wordweb';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+document.getElementById('btn-load').onclick = () => document.getElementById('file-input').click();
+document.getElementById('file-input').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      words = d.words || []; edges = d.edges || []; nextId = d.nextId || nextId;
+      saveToStorage(); render();
+    } catch { alert('That file doesn\'t look right.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+document.getElementById('btn-clear').onclick = () => {
+  if (!words.length || confirm('Clear everything?')) {
+    words = []; edges = []; render(); saveToStorage();
+  }
+};
+
+// ── Word helpers ───────────────────────────────────────────
+function findWord(text) { return words.find(w => norm(w.text) === norm(text)); }
+
+function getOrCreateWord(text, x, y) {
+  let w = findWord(text);
+  if (!w) { w = { id: uid(), text: text.trim(), x, y }; words.push(w); }
+  return w;
+}
+
+function addEdge(idA, idB) {
+  if (idA === idB) return;
+  const exists = edges.some(e => (e.a===idA&&e.b===idB)||(e.a===idB&&e.b===idA));
+  if (!exists) edges.push({ id: uid(), a: idA, b: idB });
+}
+
+// ── Render ─────────────────────────────────────────────────
 const svg = document.getElementById('svg-layer');
 const nodesLayer = document.getElementById('nodes-layer');
 
-function uid() { return nextId++; }
-
-function norm(str) { return str.trim().toLowerCase(); }
-
-function findSharedWords() {
-  // Returns array of {text, nodes:[{clusterId, wordId or 'root'}]}
-  const map = {};
-  clusters.forEach(c => {
-    const words = [{ text: norm(c.root.text), isRoot: true }, ...c.words.map(w => ({ text: norm(w.text), isRoot: false, id: w.id }))];
-    words.forEach(w => {
-      if (!w.text) return;
-      if (!map[w.text]) map[w.text] = [];
-      map[w.text].push({ clusterId: c.id, isRoot: w.isRoot, wordId: w.id });
-    });
-  });
-  return Object.entries(map).filter(([, refs]) => refs.length >= 2).map(([text, refs]) => ({ text, refs }));
-}
-
-function getNodeEl(clusterId, isRoot, wordId) {
-  if (isRoot) return document.querySelector(`[data-cluster="${clusterId}"][data-root="true"]`);
-  return document.querySelector(`[data-cluster="${clusterId}"][data-word="${wordId}"]`);
-}
-
+function getEl(id) { return document.querySelector(`[data-id="${id}"]`); }
 function getCenter(el) {
   const r = el.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
 }
 
-// ─── Rendering ───────────────────────────────────────────────────────────────
 function render() {
   nodesLayer.innerHTML = '';
   svg.innerHTML = '';
-
-  const shared = findSharedWords();
-  const sharedTexts = new Set(shared.map(s => s.text));
-
-  clusters.forEach(c => {
-    // Root element
-    const rootEl = document.createElement('div');
-    rootEl.className = 'cluster-root' + (sharedTexts.has(norm(c.root.text)) ? ' shared-highlight' : '');
-    rootEl.textContent = c.root.text.toUpperCase();
-    rootEl.style.left = c.root.x + 'px';
-    rootEl.style.top = c.root.y + 'px';
-    rootEl.dataset.cluster = c.id;
-    rootEl.dataset.root = 'true';
-    makeDraggable(rootEl, c, null, true);
-    addContextMenu(rootEl, c, null, true);
-    nodesLayer.appendChild(rootEl);
-
-    // Word nodes
-    c.words.forEach(w => {
-      const wEl = document.createElement('div');
-      wEl.className = 'word-node' + (sharedTexts.has(norm(w.text)) ? ' shared-highlight' : '');
-      wEl.textContent = w.text;
-      wEl.style.left = w.x + 'px';
-      wEl.style.top = w.y + 'px';
-      wEl.dataset.cluster = c.id;
-      wEl.dataset.word = w.id;
-      makeDraggable(wEl, c, w, false);
-      addContextMenu(wEl, c, w, false);
-      nodesLayer.appendChild(wEl);
-    });
+  words.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'word-node';
+    el.textContent = w.text;
+    el.style.left = w.x + 'px';
+    el.style.top = w.y + 'px';
+    el.dataset.id = w.id;
+    makeDraggable(el, w);
+    addCtxMenu(el, w);
+    addClickForConnect(el, w);
+    nodesLayer.appendChild(el);
   });
-
-  // Draw lines after elements are in DOM
   requestAnimationFrame(drawLines);
 }
 
 function drawLines() {
   svg.innerHTML = '';
-  const shared = findSharedWords();
-  const sharedTexts = new Set(shared.map(s => s.text));
-
-  // Cluster-internal lines (root → each word)
-  clusters.forEach(c => {
-    const rootEl = getNodeEl(c.id, true, null);
-    if (!rootEl) return;
-    const rc = getCenter(rootEl);
-
-    c.words.forEach(w => {
-      const wEl = getNodeEl(c.id, false, w.id);
-      if (!wEl) return;
-      const wc = getCenter(wEl);
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', rc.x); line.setAttribute('y1', rc.y);
-      line.setAttribute('x2', wc.x); line.setAttribute('y2', wc.y);
-      line.setAttribute('class', 'cluster-line');
-      svg.appendChild(line);
-    });
-  });
-
-  // Shared word connections
-  shared.forEach(({ refs }) => {
-    // Connect each pair
-    for (let i = 0; i < refs.length; i++) {
-      for (let j = i + 1; j < refs.length; j++) {
-        const a = refs[i], b = refs[j];
-        const elA = getNodeEl(a.clusterId, a.isRoot, a.wordId);
-        const elB = getNodeEl(b.clusterId, b.isRoot, b.wordId);
-        if (!elA || !elB) continue;
-        const ca = getCenter(elA), cb = getCenter(elB);
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', ca.x); line.setAttribute('y1', ca.y);
-        line.setAttribute('x2', cb.x); line.setAttribute('y2', cb.y);
-        line.setAttribute('class', 'shared-line');
-        svg.appendChild(line);
-      }
+  if (connectingFrom) {
+    const srcEl = getEl(connectingFrom.id);
+    if (srcEl) {
+      const c = getCenter(srcEl);
+      const pl = document.createElementNS('http://www.w3.org/2000/svg','line');
+      pl.setAttribute('x1',c.x); pl.setAttribute('y1',c.y);
+      pl.setAttribute('x2',previewX); pl.setAttribute('y2',previewY);
+      pl.setAttribute('class','preview-line');
+      svg.appendChild(pl);
     }
+  }
+  edges.forEach(e => {
+    const elA = getEl(e.a), elB = getEl(e.b);
+    if (!elA || !elB) return;
+    const ca = getCenter(elA), cb = getCenter(elB);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',ca.x); line.setAttribute('y1',ca.y);
+    line.setAttribute('x2',cb.x); line.setAttribute('y2',cb.y);
+    line.setAttribute('class','web-line');
+    svg.appendChild(line);
   });
 }
 
-// ─── Dragging ─────────────────────────────────────────────────────────────────
-function makeDraggable(el, cluster, word, isRoot) {
-  let startX, startY, startLeft, startTop, dragging = false;
-
+// ── Drag ───────────────────────────────────────────────────
+function makeDraggable(el, word) {
+  let sx, sy, sl, st, moved = false;
   el.addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || connectingFrom) return;
     e.preventDefault();
-    dragging = true;
-    startX = e.clientX; startY = e.clientY;
-    startLeft = parseFloat(el.style.left);
-    startTop = parseFloat(el.style.top);
-
+    moved = false; sx = e.clientX; sy = e.clientY; sl = word.x; st = word.y;
     function onMove(e) {
-      if (!dragging) return;
-      const dx = e.clientX - startX, dy = e.clientY - startY;
-      const nx = startLeft + dx, ny = startTop + dy;
-      el.style.left = nx + 'px';
-      el.style.top = ny + 'px';
-      if (isRoot) { cluster.root.x = nx; cluster.root.y = ny; }
-      else { word.x = nx; word.y = ny; }
+      const dx = e.clientX-sx, dy = e.clientY-sy;
+      if (Math.abs(dx)>3||Math.abs(dy)>3) moved = true;
+      word.x = sl+dx; word.y = st+dy;
+      el.style.left = word.x+'px'; el.style.top = word.y+'px';
       drawLines();
     }
     function onUp() {
-      dragging = false;
-      saveToStorage();
+      if (moved) saveToStorage();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     }
@@ -517,244 +408,175 @@ function makeDraggable(el, cluster, word, isRoot) {
   });
 }
 
-// ─── Context Menu ─────────────────────────────────────────────────────────────
-let ctxTarget = null; // {cluster, word, isRoot}
-const ctxMenu = document.getElementById('ctx-menu');
+// ── Connect mode ───────────────────────────────────────────
+let connectingFrom = null;
+let connectMode = 'connect';
+let previewX = 0, previewY = 0;
 
-function addContextMenu(el, cluster, word, isRoot) {
-  el.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    ctxTarget = { cluster, word, isRoot };
-    ctxMenu.style.display = 'block';
-    ctxMenu.style.left = e.clientX + 'px';
-    ctxMenu.style.top = e.clientY + 'px';
-
-    // Show/hide options based on context
-    document.getElementById('ctx-add-word').style.display = 'block';
-    document.getElementById('ctx-edit').style.display = 'block';
-    document.getElementById('ctx-delete').style.display = isRoot ? 'none' : 'block';
-    document.getElementById('ctx-delete-cluster').style.display = isRoot ? 'block' : 'none';
+function enterConnectMode(word, mode) {
+  connectingFrom = word; connectMode = mode;
+  const banner = document.getElementById('connect-banner');
+  banner.style.display = 'block';
+  banner.textContent = mode === 'disconnect'
+    ? `Click a word to remove its connection to "${word.text}" — Esc to cancel`
+    : `Click a word to connect to "${word.text}" — Esc to cancel`;
+  document.querySelectorAll('.word-node').forEach(el => {
+    if (el.dataset.id == word.id) el.classList.add('connecting-source');
+    else el.classList.add('connecting-target');
   });
 }
 
-document.addEventListener('click', () => { ctxMenu.style.display = 'none'; });
-document.addEventListener('contextmenu', e => {
-  // If not on a node, hide menu
-  if (!e.target.closest('[data-cluster]')) ctxMenu.style.display = 'none';
+function exitConnectMode() {
+  connectingFrom = null;
+  document.getElementById('connect-banner').style.display = 'none';
+  document.querySelectorAll('.connecting-source,.connecting-target').forEach(el => {
+    el.classList.remove('connecting-source','connecting-target');
+  });
+  drawLines();
+}
+
+document.addEventListener('mousemove', e => {
+  if (!connectingFrom) return;
+  previewX = e.clientX; previewY = e.clientY; drawLines();
+});
+document.addEventListener('keydown', e => { if (e.key==='Escape') exitConnectMode(); });
+
+function addClickForConnect(el, word) {
+  el.addEventListener('click', e => {
+    if (!connectingFrom) return;
+    if (el.dataset.id == connectingFrom.id) { exitConnectMode(); return; }
+    const targetId = parseInt(el.dataset.id);
+    if (connectMode === 'disconnect') {
+      edges = edges.filter(edge =>
+        !((edge.a===connectingFrom.id&&edge.b===targetId)||(edge.a===targetId&&edge.b===connectingFrom.id))
+      );
+    } else {
+      addEdge(connectingFrom.id, targetId);
+    }
+    exitConnectMode(); saveToStorage(); render();
+  });
+}
+
+// ── Context menu ───────────────────────────────────────────
+let ctxWord = null;
+const ctxMenu = document.getElementById('ctx-menu');
+
+function addCtxMenu(el, word) {
+  el.addEventListener('contextmenu', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (connectingFrom) return;
+    ctxWord = word;
+    ctxMenu.style.display = 'block';
+    ctxMenu.style.left = e.clientX+'px';
+    ctxMenu.style.top = e.clientY+'px';
+  });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ctx-menu') && !e.target.closest('.word-node'))
+    ctxMenu.style.display = 'none';
 });
 
-document.getElementById('ctx-add-word').onclick = () => {
-  ctxMenu.style.display = 'none';
-  if (!ctxTarget) return;
-  const word = prompt('New associated word:');
-  if (!word || !word.trim()) return;
-  const c = ctxTarget.cluster;
-  const rootEl = getNodeEl(c.id, true, null);
-  const rc = getCenter(rootEl);
-  const angle = Math.random() * Math.PI * 2;
-  const dist = 80 + Math.random() * 60;
-  c.words.push({ id: uid(), text: word.trim(), x: rc.x + Math.cos(angle) * dist, y: rc.y + Math.sin(angle) * dist });
-  render(); saveToStorage();
+document.getElementById('ctx-add-connected').onclick = () => {
+  ctxMenu.style.display = 'none'; openModal('add-connected');
 };
-
+document.getElementById('ctx-connect').onclick = () => {
+  ctxMenu.style.display = 'none'; if (ctxWord) enterConnectMode(ctxWord, 'connect');
+};
+document.getElementById('ctx-disconnect').onclick = () => {
+  ctxMenu.style.display = 'none'; if (ctxWord) enterConnectMode(ctxWord, 'disconnect');
+};
 document.getElementById('ctx-edit').onclick = () => {
-  ctxMenu.style.display = 'none';
-  if (!ctxTarget) return;
-  openEditModal(ctxTarget.cluster, ctxTarget.word, ctxTarget.isRoot);
+  ctxMenu.style.display = 'none'; openModal('edit');
 };
-
 document.getElementById('ctx-delete').onclick = () => {
   ctxMenu.style.display = 'none';
-  if (!ctxTarget || ctxTarget.isRoot) return;
-  ctxTarget.cluster.words = ctxTarget.cluster.words.filter(w => w.id !== ctxTarget.word.id);
+  if (!ctxWord) return;
+  edges = edges.filter(e => e.a!==ctxWord.id && e.b!==ctxWord.id);
+  words = words.filter(w => w.id!==ctxWord.id);
   render(); saveToStorage();
 };
 
-document.getElementById('ctx-delete-cluster').onclick = () => {
-  ctxMenu.style.display = 'none';
-  if (!ctxTarget) return;
-  clusters = clusters.filter(c => c.id !== ctxTarget.cluster.id);
-  render(); saveToStorage();
-};
+// ── Modal ──────────────────────────────────────────────────
+let modalMode = 'add';
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
-let editTarget = null;
-
-function openEditModal(cluster, word, isRoot) {
-  editTarget = { cluster, word, isRoot };
-  const input = document.getElementById('input-edit-word');
-  input.value = isRoot ? cluster.root.text : word.text;
-  document.getElementById('modal-edit').classList.add('open');
+function openModal(mode) {
+  modalMode = mode;
+  const input = document.getElementById('modal-input');
+  const title = document.getElementById('modal-title');
+  const desc = document.getElementById('modal-desc');
+  const btn = document.getElementById('modal-confirm');
+  input.value = '';
+  if (mode === 'add') {
+    title.textContent = 'Add a word';
+    desc.textContent = 'Adds a word to the canvas. If it already exists, nothing is duplicated.';
+    btn.textContent = 'add';
+  } else if (mode === 'add-connected') {
+    title.textContent = 'Add connected word';
+    desc.textContent = `Type a word to connect to "${ctxWord.text}". If that word already exists on the canvas, a line will connect to it — no duplicate created.`;
+    btn.textContent = 'add & connect';
+  } else if (mode === 'edit') {
+    title.textContent = 'Rename word';
+    desc.textContent = 'Change the text of this word.';
+    input.value = ctxWord.text;
+    btn.textContent = 'save';
+  }
+  document.getElementById('modal-word').classList.add('open');
   setTimeout(() => input.focus(), 50);
 }
 
-document.getElementById('close-edit').onclick = () => document.getElementById('modal-edit').classList.remove('open');
-document.getElementById('cancel-edit').onclick = () => document.getElementById('modal-edit').classList.remove('open');
-document.getElementById('confirm-edit').onclick = () => {
-  const val = document.getElementById('input-edit-word').value.trim();
-  if (!val || !editTarget) return;
-  if (editTarget.isRoot) editTarget.cluster.root.text = val;
-  else editTarget.word.text = val;
-  document.getElementById('modal-edit').classList.remove('open');
-  render(); saveToStorage();
-};
-document.getElementById('input-edit-word').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('confirm-edit').click();
-  if (e.key === 'Escape') document.getElementById('modal-edit').classList.remove('open');
-});
+function closeModal() { document.getElementById('modal-word').classList.remove('open'); }
+document.getElementById('modal-close').onclick = closeModal;
+document.getElementById('modal-cancel').onclick = closeModal;
 
-// ─── New Cluster Modal ────────────────────────────────────────────────────────
-document.getElementById('btn-new-cluster').onclick = () => {
-  document.getElementById('input-root').value = '';
-  document.getElementById('input-words').value = '';
-  document.getElementById('modal-cluster').classList.add('open');
-  setTimeout(() => document.getElementById('input-root').focus(), 50);
-};
-
-document.getElementById('close-cluster').onclick = () => document.getElementById('modal-cluster').classList.remove('open');
-document.getElementById('cancel-cluster').onclick = () => document.getElementById('modal-cluster').classList.remove('open');
-
-document.getElementById('confirm-cluster').onclick = () => {
-  const rootText = document.getElementById('input-root').value.trim();
-  if (!rootText) return;
-  const wordLines = document.getElementById('input-words').value.split('\n').map(l => l.trim()).filter(Boolean);
-
-  // Place cluster at a random-ish spot on screen
-  const cx = 200 + Math.random() * (window.innerWidth - 400);
-  const cy = 150 + Math.random() * (window.innerHeight - 300);
-
-  const words = wordLines.map((text, i) => {
-    const angle = (i / Math.max(wordLines.length, 1)) * Math.PI * 2 - Math.PI / 2;
-    const dist = 90 + Math.random() * 50;
-    return {
-      id: uid(),
-      text,
-      x: cx + Math.cos(angle) * dist,
-      y: cy + Math.sin(angle) * dist
-    };
-  });
-
-  clusters.push({ id: uid(), root: { text: rootText, x: cx, y: cy }, words });
-  document.getElementById('modal-cluster').classList.remove('open');
-  render(); saveToStorage();
-};
-
-// Enter key in root input → focus words textarea
-document.getElementById('input-root').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('input-words').focus(); }
-});
-
-// ─── Clear ────────────────────────────────────────────────────────────────────
-document.getElementById('btn-clear').onclick = () => {
-  if (clusters.length === 0 || confirm('Clear everything?')) { clusters = []; render(); saveToStorage(); }
-};
-
-// ─── Canvas pan (background drag) ────────────────────────────────────────────
-// Simple: we don't pan the canvas itself (nodes are fixed position)
-// Instead allow right-click-drag on background — skip for now, keep simple
-
-// ─── Keyboard shortcut ───────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
-    e.preventDefault();
-    document.getElementById('btn-new-cluster').click();
-  }
-});
-
-// ─── Local Storage ────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'wordweb_clusters';
-
-function saveToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ clusters, nextId }));
-    // Flash indicator
-    const ind = document.getElementById('autosave-indicator');
-    ind.style.opacity = '1';
-    clearTimeout(ind._t);
-    ind._t = setTimeout(() => ind.style.opacity = '0', 1600);
-  } catch(e) { /* storage unavailable (e.g. sandboxed iframe) — silently skip */ }
-}
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    clusters = data.clusters || [];
-    nextId = data.nextId || nextId;
-    return clusters.length > 0;
-  } catch(e) { return false; }
-}
-
-// ─── File Save / Load ─────────────────────────────────────────────────────────
-document.getElementById('btn-save').onclick = () => {
-  const data = JSON.stringify({ clusters, nextId }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'my-word-web.wordweb';
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-
-document.getElementById('btn-load').onclick = () => {
-  document.getElementById('file-input').click();
-};
-
-document.getElementById('file-input').onchange = (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      clusters = data.clusters || [];
-      nextId = data.nextId || nextId;
-      saveToStorage();
-      render();
-    } catch(err) {
-      alert('Hmm, that file doesn\'t look right. Make sure it\'s a .wordweb file.');
+document.getElementById('modal-confirm').onclick = () => {
+  const val = document.getElementById('modal-input').value.trim();
+  if (!val) return;
+  if (modalMode === 'add') {
+    const x = 150 + Math.random() * (window.innerWidth - 300);
+    const y = 120 + Math.random() * (window.innerHeight - 220);
+    getOrCreateWord(val, x, y);
+  } else if (modalMode === 'add-connected') {
+    const src = ctxWord;
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 110 + Math.random() * 60;
+    const target = getOrCreateWord(val, src.x + Math.cos(angle)*dist, src.y + Math.sin(angle)*dist);
+    addEdge(src.id, target.id);
+  } else if (modalMode === 'edit') {
+    const existing = findWord(val);
+    if (existing && existing.id !== ctxWord.id) {
+      alert(`"${val}" already exists on the canvas!`); return;
     }
-  };
-  reader.readAsText(file);
-  // Reset so same file can be re-loaded
-  e.target.value = '';
+    ctxWord.text = val;
+  }
+  closeModal(); render(); saveToStorage();
 };
 
-// ─── Hook render to auto-save ─────────────────────────────────────────────────
-const _render = render;
-// We'll call saveToStorage() at the end of every state-changing action below.
+document.getElementById('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('modal-confirm').click();
+  if (e.key === 'Escape') closeModal();
+});
 
+document.getElementById('btn-add').onclick = () => { ctxWord = null; openModal('add'); };
 
-// ─── Startup: load saved data or show example ─────────────────────────────────
+// ── Startup ────────────────────────────────────────────────
 const hadSaved = loadFromStorage();
 if (!hadSaved) {
-  clusters = [
-    {
-      id: uid(),
-      root: { text: 'coffee', x: 320, y: 300 },
-      words: [
-        { id: uid(), text: 'morning', x: 200, y: 220 },
-        { id: uid(), text: 'warm', x: 420, y: 210 },
-        { id: uid(), text: 'chocolate', x: 460, y: 340 },
-        { id: uid(), text: 'cream', x: 390, y: 400 },
-        { id: uid(), text: 'mug', x: 220, y: 370 },
-      ]
-    },
-    {
-      id: uid(),
-      root: { text: 'morning', x: 160, y: 500 },
-      words: [
-        { id: uid(), text: 'sun', x: 60, y: 420 },
-        { id: uid(), text: 'rise', x: 100, y: 560 },
-        { id: uid(), text: 'warm', x: 260, y: 560 },
-        { id: uid(), text: 'yellow', x: 50, y: 580 },
-      ]
-    }
-  ];
+  // Seed showing the unique-word magic
+  const seed    = getOrCreateWord('seed',    300, 300);
+  const plant   = getOrCreateWord('plant',   440, 210);
+  const flower  = getOrCreateWord('flower',  590, 290);
+  const garden  = getOrCreateWord('garden',  440, 390);
+  const wedding = getOrCreateWord('wedding', 740, 200);
+  const bouquet = getOrCreateWord('bouquet', 680, 360);
+  addEdge(seed.id, plant.id);
+  addEdge(plant.id, flower.id);
+  addEdge(plant.id, garden.id);
+  addEdge(wedding.id, bouquet.id);
+  addEdge(bouquet.id, flower.id); // flower connects both chains!
 }
 render();
 </script>
+
 </body>
 </html>
